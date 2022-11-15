@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+  strategy: mitogen_linear
+
+  tasks:
+    - name: show ansible version
+      debug:
+        var: ansible_version
+    - name: show who i am
+      command: whoami
+      changed_when: false

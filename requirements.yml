@@ -1,0 +1,7 @@
+---
+collections:
+  # examples, remove if not needed
+  - ansible.netcommon
+  - community.docker
+  - ansible.posix
+  - community.general

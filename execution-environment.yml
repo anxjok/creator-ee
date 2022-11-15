@@ -1,0 +1,39 @@
+---
+version: 1
+build_arg_defaults:
+  # Use to build the execution environment - no need to change this
+  EE_BUILDER_IMAGE: 'quay.io/ansible/ansible-builder:latest'
+  # Choose the Ansible version you will need in the EE 
+  # Passed via gitlab-ci variable
+  # EE_BASE_IMAGE: 'gitlab-a8n.anexia-it.com:4567/a8n/awx/awx-ee/a8n-ee:ansible-2-9'
+
+# You can pass additional configuration options to Ansible during the image
+# build by suppling an ansible.cfg file. This will will NOT be contained in
+# the final EE container.
+# ansible_config: 'build.ansible.cfg'
+
+dependencies:
+  galaxy: requirements.yml
+  python: requirements.txt
+  system: bindep.txt
+
+additional_build_steps:
+  prepend:
+      # Fix dnf module not found
+    - RUN sed -i '1s/platform-python$/platform-python3.6/g' /usr/bin/dnf-3
+    - RUN dnf install -y yum-utils
+      && sed -i '1s/platform-python$/platform-python3.6/g' /usr/bin/yum-config-manager
+    - RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      && dnf install -y docker-ce-cli docker-compose-plugin
+    - RUN dnf remove -y podman runc && dnf autoremove -y
+    - RUN dnf install -y socat sudo
+  append:
+    - "RUN echo 'runner ALL = NOPASSWD: /bin/socat' >> /etc/sudoers"
+    - RUN chown -R 1000:1000 /home/runner
+    - ADD run.sh /run.sh
+    - ADD entrypoint.sh /entrypoint.sh
+    - RUN chmod +x /run.sh && chmod +x /entrypoint.sh
+    - RUN echo "runner:!!:19241:0:99999:7:::" >> /etc/shadow
+    - ENTRYPOINT ["/entrypoint.sh"]
+    - CMD ["ansible-runner worker", "--private-data-dir=/runner"]
+    - USER 1000
